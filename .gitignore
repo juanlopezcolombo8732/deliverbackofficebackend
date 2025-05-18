@@ -1,26 +1,44 @@
-# Maven
-/target/
-/pom.xml.tag
-/pom.xml.releaseBackup
-/pom.xml.versionsBackup
-/logs/
-*.log
-
-# IntelliJ
-.idea/
-*.iml
-*.iws
-out/
-
-# Eclipse
-*.classpath
-*.project
-*.settings/
-
-# OS files
+# Sistema y entorno
 .DS_Store
-Thumbs.db
+*.log
+*.tmp
+*.swp
 
-# Application config
-src/main/resources/application.properties
+# Archivos de compilación y empaquetado
+/target/
+/build/
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven
+.mvn/
+!/.mvn/wrapper/maven-wrapper.jar
+
+# Eclipse / IntelliJ IDEA / VS Code
+*.iml
+.idea/
+.vscode/
+*.ipr
+*.iws
+*.bak
+
+# Spring Boot config local
+application-local.properties
+application-dev.properties
+
+# Carpetas pesadas o no necesarias
+.elasticbeanstalk/
+*.zip
+
+# Sistema de archivos de Mac
+__MACOSX
+
+# Test reports
+/surefire-reports/
+/test-output/
+
+# Archivos sensibles opcionales
+.env
 *.pem
