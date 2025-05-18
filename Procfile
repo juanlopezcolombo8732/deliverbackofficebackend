@@ -1,1 +1,1 @@
-web: java -Dserver.port=5000 -jar target/deliver-0.0.1-SNAPSHOT.jar
+web: java -Dserver.port=5000 -jar deliver-0.0.1-SNAPSHOT.jar
