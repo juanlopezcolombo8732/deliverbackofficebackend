@@ -14,7 +14,8 @@ public class Usuario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    private Double totalVentas = 0.0;     // Total de ventas realizadas
+    private Double saldoActual = 0.0;
     private String nombre;
     private String apellido;
     private String email;

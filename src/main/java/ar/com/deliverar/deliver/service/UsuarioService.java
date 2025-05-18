@@ -25,6 +25,7 @@ public class UsuarioService {
     }
 
     // Modificar
+    // Modificar
     public Usuario actualizarUsuario(Long id, Usuario usuarioActualizado) {
         Optional<Usuario> usuarioOpt = usuarioRepository.findById(id);
         if (usuarioOpt.isPresent()) {
@@ -42,10 +43,14 @@ public class UsuarioService {
             existente.setPorcentajeComision(usuarioActualizado.getPorcentajeComision());
             existente.setNombreContactoEmergencia(usuarioActualizado.getNombreContactoEmergencia());
             existente.setTelefonoContactoEmergencia(usuarioActualizado.getTelefonoContactoEmergencia());
+            existente.setTotalVentas(usuarioActualizado.getTotalVentas());
+            existente.setSaldoActual(usuarioActualizado.getSaldoActual());
+
             return usuarioRepository.save(existente);
         }
         return null;
     }
+
 
     // Eliminar
     public void eliminarUsuario(Long id) {
@@ -134,4 +139,6 @@ public class UsuarioService {
 
         return usuarioRepository.saveAll(usuarios);
     }
+
+
 }
