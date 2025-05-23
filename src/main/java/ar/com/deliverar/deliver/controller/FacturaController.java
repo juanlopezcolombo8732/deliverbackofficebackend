@@ -1,14 +1,13 @@
 package ar.com.deliverar.deliver.controller;
 
+import ar.com.deliverar.deliver.dto.RegistrarFacturaDTO;
 import ar.com.deliverar.deliver.model.Factura;
 import ar.com.deliverar.deliver.model.Factura.EstadoFactura;
-import ar.com.deliverar.deliver.model.Proveedor;
 import ar.com.deliverar.deliver.service.FacturaService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,14 +31,25 @@ public class FacturaController {
             return ResponseEntity.badRequest().build();
         }
     }
+    // src/main/java/ar/com/deliverar/deliver/controller/FacturaController.java
+
+    @PatchMapping("/{id}/pagar")
+    public ResponseEntity<Factura> pagarFactura(@PathVariable Long id) {
+        try {
+            Factura pagada = facturaService.marcarComoPagada(id);
+            return ResponseEntity.ok(pagada);
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 
     @PostMapping
-    public ResponseEntity<Factura> crearFactura(@RequestBody Factura factura) {
+    public ResponseEntity<Factura> crearFactura(@RequestBody RegistrarFacturaDTO dto) {
         try {
-            Factura creada = facturaService.crearFacturaDesdeJson(factura);
-            return ResponseEntity.ok(creada);
+            Factura factura = facturaService.crearFacturaDesdeDto(dto);
+            return ResponseEntity.ok(factura);
         } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.badRequest().build();
         }
     }
 
@@ -74,6 +84,19 @@ public class FacturaController {
     @GetMapping("/proveedor/{proveedorId}")
     public List<Factura> obtenerPorProveedor(@PathVariable Long proveedorId) {
         return facturaService.obtenerPorProveedor(proveedorId);
+    }
+
+    // src/main/java/ar/com/deliverar/deliver/controller/FacturaController.java
+
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> descargarFacturaPdf(@PathVariable Long id) {
+        byte[] pdfBytes = facturaService.generarPdf(id);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename("factura_" + id + ".pdf")
+                .build());
+        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
     }
 
 

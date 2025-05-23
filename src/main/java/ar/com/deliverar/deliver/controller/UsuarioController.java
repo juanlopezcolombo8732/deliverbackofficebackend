@@ -75,8 +75,8 @@ public class UsuarioController {
         return usuarioService.crearUsuarios(usuarios);
     }
 
-    // Baja masiva
-    @DeleteMapping("/batch")
+
+    @PostMapping("/batch/eliminar")
     public ResponseEntity<Void> eliminarVarios(@RequestBody List<Long> ids) {
         usuarioService.eliminarUsuarios(ids);
         return ResponseEntity.noContent().build();
