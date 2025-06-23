@@ -1,24 +1,29 @@
 package ar.com.deliverar.deliver.service;
 
 import ar.com.deliverar.deliver.dto.RegistrarFacturaDTO;
+import ar.com.deliverar.deliver.model.ComisionEntity;
 import ar.com.deliverar.deliver.model.Factura;
-import ar.com.deliverar.deliver.model.ItemFactura;
-import ar.com.deliverar.deliver.model.Proveedor;
 import ar.com.deliverar.deliver.model.Factura.EstadoFactura;
+import ar.com.deliverar.deliver.model.Proveedor;
+import ar.com.deliverar.deliver.repository.ComisionRepository;
 import ar.com.deliverar.deliver.repository.FacturaRepository;
 import ar.com.deliverar.deliver.repository.ProveedorRepository;
+import com.lowagie.text.Document;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import com.lowagie.text.*;
-import com.lowagie.text.pdf.*;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
+import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.time.ZoneId;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
+@Transactional
 public class FacturaService {
 
     @Autowired
@@ -26,6 +31,9 @@ public class FacturaService {
 
     @Autowired
     private ProveedorRepository proveedorRepository;
+
+    @Autowired
+    private ComisionRepository comisionRepository;
 
     // Crear una nueva factura para un proveedor específico
     public Factura emitirFactura(Long proveedorId, String numero, Double montoTotal) {
@@ -61,14 +69,19 @@ public class FacturaService {
         return facturaRepository.findById(id);
     }
 
+    // Crear factura a partir de DTO (mantiene tu lógica existente)
     public Factura crearFacturaDesdeDto(RegistrarFacturaDTO dto) {
         Proveedor proveedor = proveedorRepository.findById(dto.getProveedorId())
                 .orElseThrow(() -> new RuntimeException("Proveedor no encontrado"));
 
         Factura factura = new Factura();
-        factura.setNumero(dto.getNumero() != null ? dto.getNumero() : UUID.randomUUID().toString());
+        factura.setNumero(dto.getNumero() != null
+                ? dto.getNumero()
+                : UUID.randomUUID().toString());
         factura.setDescripcion(dto.getDescripcion());
-        factura.setFechaEmision(dto.getFechaEmision() != null ? dto.getFechaEmision() : LocalDate.now());
+        factura.setFechaEmision(dto.getFechaEmision() != null
+                ? dto.getFechaEmision()
+                : LocalDate.now());
         factura.setMontoTotal(dto.getMontoTotal());
         factura.setProveedor(proveedor);
         factura.setTipoComprobante(dto.getTipoComprobante());
@@ -77,11 +90,11 @@ public class FacturaService {
         factura.setCuitReceptor(dto.getCuitReceptor());
         factura.setDomicilioFiscal(dto.getDomicilioFiscal());
         factura.setNotas(dto.getNotas());
-        factura.setEstado(Factura.EstadoFactura.EMITIDA);
+        factura.setEstado(EstadoFactura.EMITIDA);
         factura.setCondicionPago("Contado");
 
         // Crear ítem automático
-        ItemFactura item = new ItemFactura();
+        ar.com.deliverar.deliver.model.ItemFactura item = new ar.com.deliverar.deliver.model.ItemFactura();
         item.setDescripcion(dto.getDescripcion());
         item.setCantidad(1);
         item.setPrecioUnitario(dto.getMontoTotal());
@@ -107,19 +120,21 @@ public class FacturaService {
         return facturaRepository.findByProveedorId(proveedorId);
     }
 
+    // Guardar o actualizar factura genérica
     public Factura guardarFactura(Factura factura) {
         return facturaRepository.save(factura);
     }
 
-
+    // Marcar factura como pagada
     public Factura marcarComoPagada(Long facturaId) {
         Factura factura = facturaRepository.findById(facturaId)
                 .orElseThrow(() -> new RuntimeException("Factura no encontrada con ID: " + facturaId));
 
-        factura.setEstado(Factura.EstadoFactura.PAGADA);
+        factura.setEstado(EstadoFactura.PAGADA);
         return facturaRepository.save(factura);
     }
 
+    // Generar PDF de la factura
     public byte[] generarPdf(Long facturaId) {
         Factura factura = facturaRepository.findById(facturaId)
                 .orElseThrow(() -> new RuntimeException("Factura no encontrada"));
@@ -144,4 +159,54 @@ public class FacturaService {
         return baos.toByteArray();
     }
 
+    /**
+     * Genera facturas automáticas de comisiones por periodo para cada tenant.
+     */
+    public List<Factura> generarFacturasPorPeriodo(LocalDate inicio, LocalDate fin) {
+        Instant start = inicio.atStartOfDay(ZoneId.of("UTC")).toInstant();
+        Instant end   = fin.plusDays(1).atStartOfDay(ZoneId.of("UTC")).toInstant();
+
+        // Traer todas las comisiones en el periodo
+        List<ComisionEntity> coms = comisionRepository.findByTimestampBetween(start, end);
+
+        // Filtrar aquellas con tenant == null
+        List<ComisionEntity> validComs = coms.stream()
+                .filter(c -> c.getTenant() != null)
+                .toList();
+
+        // Si no hay nada que procesar, salimos
+        if (validComs.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Agrupar por tenant y sumar la plataforma
+        Map<Proveedor, Double> sumComs = validComs.stream()
+                .collect(Collectors.groupingBy(
+                        ComisionEntity::getTenant,
+                        Collectors.summingDouble(ComisionEntity::getComisionPlataforma)
+                ));
+
+        List<Factura> facturas = new ArrayList<>();
+        sumComs.forEach((prov, totalCom) -> {
+            Factura f = new Factura();
+            f.setProveedor(prov);
+            f.setPeriodoInicio(inicio);
+            f.setPeriodoFin(fin);
+            f.setTotalComisiones(totalCom);
+
+            double iva = totalCom * 0.21;
+            f.setIvaTotal(iva);
+            f.setMontoTotal(totalCom + iva);
+
+            f.setNumero("FAC-" + prov.getId() + "-" + inicio);
+            f.setFechaEmision(LocalDate.now());
+            f.setEstado(Factura.EstadoFactura.EMITIDA);
+
+            facturas.add(facturaRepository.save(f));
+        });
+
+        return facturas;
+    }
 }
+
+

@@ -5,11 +5,12 @@ import ar.com.deliverar.deliver.model.Factura;
 import ar.com.deliverar.deliver.model.Factura.EstadoFactura;
 import ar.com.deliverar.deliver.service.FacturaService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/facturas")
@@ -19,85 +20,61 @@ public class FacturaController {
     @Autowired
     private FacturaService facturaService;
 
-    // Emitir nueva factura
-    @PostMapping("/emitir")
-    public ResponseEntity<Factura> emitirFactura(@RequestParam Long proveedorId,
-                                                 @RequestParam String numero,
-                                                 @RequestParam Double montoTotal) {
-        try {
-            Factura factura = facturaService.emitirFactura(proveedorId, numero, montoTotal);
-            return ResponseEntity.ok(factura);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-    // src/main/java/ar/com/deliverar/deliver/controller/FacturaController.java
 
-    @PatchMapping("/{id}/pagar")
-    public ResponseEntity<Factura> pagarFactura(@PathVariable Long id) {
-        try {
-            Factura pagada = facturaService.marcarComoPagada(id);
-            return ResponseEntity.ok(pagada);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @PostMapping
-    public ResponseEntity<Factura> crearFactura(@RequestBody RegistrarFacturaDTO dto) {
-        try {
-            Factura factura = facturaService.crearFacturaDesdeDto(dto);
-            return ResponseEntity.ok(factura);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-
-    // Cambiar estado
-    @PatchMapping("/{id}/estado")
-    public ResponseEntity<Factura> cambiarEstado(@PathVariable Long id,
-                                                 @RequestParam EstadoFactura estado) {
-        try {
-            Factura actualizada = facturaService.actualizarEstado(id, estado);
-            return ResponseEntity.ok(actualizada);
-        } catch (RuntimeException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    // Obtener todas
+    /** Todas las facturas */
     @GetMapping
-    public List<Factura> obtenerTodas() {
+    public List<Factura> listar() {
         return facturaService.obtenerTodas();
     }
 
-    // Obtener por ID
+    /** Factura por ID */
     @GetMapping("/{id}")
     public ResponseEntity<Factura> obtenerPorId(@PathVariable Long id) {
-        Optional<Factura> factura = facturaService.obtenerPorId(id);
-        return factura.map(ResponseEntity::ok)
+        return facturaService.obtenerPorId(id)
+                .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    // Obtener por proveedor
-    @GetMapping("/proveedor/{proveedorId}")
-    public List<Factura> obtenerPorProveedor(@PathVariable Long proveedorId) {
-        return facturaService.obtenerPorProveedor(proveedorId);
+    /** Crear factura desde DTO */
+    @PostMapping
+    public Factura crear(@RequestBody RegistrarFacturaDTO dto) {
+        return facturaService.crearFacturaDesdeDto(dto);
     }
 
-    // src/main/java/ar/com/deliverar/deliver/controller/FacturaController.java
+    /** Cambiar estado */
+    @PutMapping("/{id}/estado")
+    public Factura actualizarEstado(
+            @PathVariable Long id,
+            @RequestParam EstadoFactura estado
+    ) {
+        return facturaService.actualizarEstado(id, estado);
+    }
 
+    /** Facturas de un proveedor */
+    @GetMapping("/proveedor/{provId}")
+    public List<Factura> porProveedor(@PathVariable Long provId) {
+        return facturaService.obtenerPorProveedor(provId);
+    }
+
+    /** Descargar PDF inline */
     @GetMapping("/{id}/pdf")
-    public ResponseEntity<byte[]> descargarFacturaPdf(@PathVariable Long id) {
-        byte[] pdfBytes = facturaService.generarPdf(id);
+    public ResponseEntity<byte[]> descargarPdf(@PathVariable Long id) {
+        byte[] pdf = facturaService.generarPdf(id);
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDisposition(ContentDisposition.attachment()
-                .filename("factura_" + id + ".pdf")
-                .build());
-        return new ResponseEntity<>(pdfBytes, headers, HttpStatus.OK);
+        headers.setContentDisposition(
+                ContentDisposition.builder("inline")
+                        .filename("factura-" + id + ".pdf").build()
+        );
+        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
     }
 
-
+    /** Generar facturas automáticas de comisiones por periodo */
+    @PostMapping("/generar-periodo")
+    public List<Factura> generarPeriodo(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fin
+    ) {
+        return facturaService.generarFacturasPorPeriodo(inicio, fin);
+    }
 }

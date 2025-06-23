@@ -1,0 +1,40 @@
+name: CI/CD Backend Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v3
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build con Maven
+        run: mvn clean package -DskipTests
+
+      - name: Crear archivo .pem desde secret
+        run: |
+          echo "${{ secrets.EC2_KEY }}" > key.pem
+          chmod 400 key.pem
+
+      - name: Subir .jar a EC2
+        run: |
+          scp -i key.pem -o StrictHostKeyChecking=no \
+            target/deliver-0.0.1-SNAPSHOT.jar \
+            ec2-user@15.229.252.91:/home/ec2-user/deliver.jar
+
+      - name: Reiniciar app en EC2
+        run: |
+          ssh -i key.pem -o StrictHostKeyChecking=no \
+            ec2-user@15.229.252.91 "
+            pkill -f 'java' || true
+            nohup java -jar deliver.jar > app.log 2>&1 &"
