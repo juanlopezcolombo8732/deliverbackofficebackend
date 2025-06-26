@@ -13,7 +13,7 @@ import java.util.List;
 public class Usuario {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private Double totalVentas = 0.0;     // Total de ventas realizadas
     private Double saldoActual = 0.0;
@@ -29,11 +29,12 @@ public class Usuario {
     private String departamento;
 
     private LocalDate fechaContratacion;
-    private Double salarioBase;
-    private Double porcentajeComision;
+    private Double salarioBase=1000.0;
+    private Double porcentajeComision=0.2;
 
     private String nombreContactoEmergencia;
     private String telefonoContactoEmergencia;
+
 
 
 }

@@ -24,6 +24,7 @@ public class Pedido {
     private String moneda;
     private Instant createdAt;
 
+
     @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL)
     private List<DetallePedido> detalles;
 }

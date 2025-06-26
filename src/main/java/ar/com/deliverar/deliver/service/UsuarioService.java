@@ -21,6 +21,8 @@ public class UsuarioService {
 
     // Crear
     public Usuario crearUsuario(Usuario usuario) {
+        System.out.println("USUARIO ID");
+
         return usuarioRepository.save(usuario);
     }
 

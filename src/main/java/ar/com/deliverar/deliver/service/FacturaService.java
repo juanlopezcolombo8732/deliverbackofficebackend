@@ -35,20 +35,7 @@ public class FacturaService {
     @Autowired
     private ComisionRepository comisionRepository;
 
-    // Crear una nueva factura para un proveedor específico
-    public Factura emitirFactura(Long proveedorId, String numero, Double montoTotal) {
-        Proveedor proveedor = proveedorRepository.findById(proveedorId)
-                .orElseThrow(() -> new RuntimeException("Proveedor no encontrado con ID: " + proveedorId));
 
-        Factura factura = new Factura();
-        factura.setProveedor(proveedor);
-        factura.setNumero(numero);
-        factura.setMontoTotal(montoTotal);
-        factura.setFechaEmision(LocalDate.now());
-        factura.setEstado(EstadoFactura.EMITIDA);
-
-        return facturaRepository.save(factura);
-    }
 
     // Cambiar el estado de una factura
     public Factura actualizarEstado(Long idFactura, EstadoFactura nuevoEstado) {

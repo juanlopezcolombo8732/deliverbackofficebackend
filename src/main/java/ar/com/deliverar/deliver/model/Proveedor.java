@@ -12,9 +12,9 @@ import java.util.List;
 @Table(name = "proveedores")
 @JsonIgnoreProperties({"pedidos", "facturas"})
 public class Proveedor {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+
+
+
 
     private String nombre;
     private String cuit;
@@ -23,6 +23,7 @@ public class Proveedor {
     private String telefono;
     private String categoriaFiscal;
 
+
     @JsonManagedReference
     @OneToMany(mappedBy = "tenant", cascade = CascadeType.ALL)
     private List<Pedido> pedidos;
@@ -30,6 +31,10 @@ public class Proveedor {
     @JsonManagedReference
     @OneToMany(mappedBy = "proveedor", cascade = CascadeType.ALL)
     private List<Factura> facturas;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
 }
 
 
