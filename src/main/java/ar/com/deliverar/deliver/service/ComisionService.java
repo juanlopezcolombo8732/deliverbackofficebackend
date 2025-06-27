@@ -65,7 +65,7 @@ public class ComisionService {
         // 3) COMISIÓN REPARTIDOR
         // --------------------------
         String repartidorId = pedido.getRepartidorId();
-        Usuario rep = usuarioRepo.findById(Long.valueOf(repartidorId))
+        Usuario rep = usuarioRepo.findByExternalId(repartidorId)
                 .orElseThrow(() -> new RuntimeException("Repartidor no encontrado: " + repartidorId));
         double porcentaje = rep.getPorcentajeComision() != null
                 ? rep.getPorcentajeComision()

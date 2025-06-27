@@ -12,6 +12,7 @@ import java.io.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.function.Consumer;
 
 @Service
 public class UsuarioService {
@@ -140,6 +141,18 @@ public class UsuarioService {
         }
 
         return usuarioRepository.saveAll(usuarios);
+    }
+    public Usuario guardar(Usuario usuario) {
+        return usuarioRepository.save(usuario);
+    }
+
+    public Usuario findOrCreateByExternalId(String externalId) {
+        return usuarioRepository.findByExternalId(externalId)
+                .orElseGet(() -> {
+                    Usuario nuevo = new Usuario();
+                    nuevo.setExternalId(externalId);
+                    return usuarioRepository.save(nuevo);
+                });
     }
 
 

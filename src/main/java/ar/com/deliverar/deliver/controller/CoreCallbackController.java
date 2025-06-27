@@ -1,9 +1,11 @@
 package ar.com.deliverar.deliver.controller;
 
+import ar.com.deliverar.deliver.model.Pedido;
 import ar.com.deliverar.deliver.model.Proveedor;
 import ar.com.deliverar.deliver.model.Usuario;
 import ar.com.deliverar.deliver.repository.UsuarioRepository;
 import ar.com.deliverar.deliver.service.ComisionService;
+import ar.com.deliverar.deliver.service.PedidoService;
 import ar.com.deliverar.deliver.service.ProveedorService;
 import ar.com.deliverar.deliver.service.UsuarioService;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -12,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.Map;
 
 @CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.HEAD, RequestMethod.POST})
@@ -21,15 +24,18 @@ public class CoreCallbackController {
 
     private final ProveedorService proveedorService;
     private final ComisionService comisionService;
+    private final PedidoService pedidoService;
+
 
     private final UsuarioService usuarioService;
 
     @Autowired
     public CoreCallbackController(ProveedorService proveedorService,
-                                  ComisionService comisionService,UsuarioRepository usuarioRepository, UsuarioService usuarioService, ObjectMapper mapper) {
+                                  ComisionService comisionService,PedidoService pedidoService,UsuarioRepository usuarioRepository, UsuarioService usuarioService, ObjectMapper mapper) {
         this.proveedorService = proveedorService;
         this.comisionService  = comisionService;
         this.usuarioService = usuarioService;
+        this.pedidoService = pedidoService ;
 
     }
 
@@ -50,19 +56,21 @@ public class CoreCallbackController {
 
     @PostMapping
     public ResponseEntity<Void> onCoreEvent(
-            @RequestHeader("X-Event-Type") String eventType,
+            @RequestHeader("x-topic") String eventType,
             @RequestBody Map<String,Object> payload
     ) {
         switch(eventType) {
-            case "tenant.created":
-                handleTenantCreated(payload);
+            case "tenant.creadoTest":
+                proveedorService.upsertFromPayload(payload);
                 break;
 
             case "pedido.entregado":
-                handlePedidoEntregado(payload);
+                String pedidoId = pedidoService.upsertAndReturnId(payload);
+                comisionService.procesarPedidoEntregado(pedidoId);
                 break;
 
             case "delivery.nuevoRepartidor":
+                // Directamente pasamos el Map que nos llega
                 handleNuevoRepartidor(payload);
                 break;
 
@@ -73,46 +81,32 @@ public class CoreCallbackController {
     }
 
     @SuppressWarnings("unchecked")
-    private void handleNuevoRepartidor(Map<String,Object> body) {
-        // extraigo el map interno "payload"
-        Map<String,Object> p = (Map<String,Object>) body.get("payload");
+    private void handleNuevoRepartidor(Map<String,Object> p) {
+        // Ahora 'p' es directamente el JSON que envías en el body
+        String extId = p.get("repartidorId").toString();
 
-        // mapeo campos del payload a mi entidad Usuario
-        Usuario u = new Usuario();
-        // asumimos que rol = "REPARTIDOR" por convención
+        Usuario u = usuarioService.findOrCreateByExternalId(extId);
+
         u.setRol("REPARTIDOR");
         u.setNombre(   (String) p.get("nombre")   );
         u.setApellido( (String) p.get("apellido") );
         u.setEmail(    (String) p.get("email")    );
-        Object tel = p.get("telefono");
-        u.setTelefono(tel != null ? tel.toString() : null);
+        u.setTelefono(p.get("telefono").toString());
 
-        // inicializamos otros campos por defecto
-        u.setTotalVentas(0.0);
-        u.setSaldoActual(0.0);
-        // (puedes completar domicilio, ciudad, etc. si vienen en el payload)
+        if (p.containsKey("salarioBase")) {
+            u.setSalarioBase(((Number)p.get("salarioBase")).doubleValue());
+        }
+        if (p.containsKey("porcentajeComision")) {
+            u.setPorcentajeComision(((Number)p.get("porcentajeComision")).doubleValue());
+        }
 
-        // guardamos en BD
-        usuarioService.crearUsuario(u);
-    }
+        if (u.getTotalVentas() == null) {
+            u.setTotalVentas(0.0);
+        }
+        if (u.getSaldoActual() == null) {
+            u.setSaldoActual(0.0);
+        }
 
-    private void handleTenantCreated(Map<String,Object> payload) {
-
-        Proveedor nuevo = new Proveedor();
-                    nuevo.setNombre((String) payload.get("nombre"));
-                    nuevo.setCuit((String) payload.get("cuit"));
-                    nuevo.setDireccion((String) payload.get("direccion"));
-                    nuevo.setEmail((String) payload.get("email"));
-                    nuevo.setTelefono((String) payload.get("telefono"));
-                    nuevo.setCategoriaFiscal((String) payload.get("categoriaFiscal"));
-
-
-        proveedorService.crearProveedor(nuevo);
-    }
-
-    private void handlePedidoEntregado(Map<String,Object> payload) {
-        // Asumimos que tu ComisionService expone un método así:
-        String pedidoId = payload.get("pedidoId").toString();
-        comisionService.procesarPedidoEntregado(pedidoId);
+        usuarioService.guardar(u);
     }
 }

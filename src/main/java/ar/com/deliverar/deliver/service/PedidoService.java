@@ -1,12 +1,16 @@
 package ar.com.deliverar.deliver.service;
 
 import ar.com.deliverar.deliver.model.Pedido;
+import ar.com.deliverar.deliver.model.Proveedor;
 import ar.com.deliverar.deliver.repository.PedidoRepository;
+import ar.com.deliverar.deliver.repository.ProveedorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -14,10 +18,12 @@ import java.util.Optional;
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
+    private final ProveedorRepository proveedorRepository;
 
     @Autowired
-    public PedidoService(PedidoRepository pedidoRepository) {
+    public PedidoService(PedidoRepository pedidoRepository,ProveedorRepository proveedorRepository) {
         this.pedidoRepository = pedidoRepository;
+        this.proveedorRepository = proveedorRepository;
     }
 
     /** Crea o actualiza un pedido */
@@ -38,5 +44,44 @@ public class PedidoService {
     /** Elimina un pedido por ID */
     public void delete(String pedidoId) {
         pedidoRepository.deleteById(pedidoId);
+    }
+
+    @Transactional
+    public String upsertAndReturnId(Map<String,Object> payload) {
+        String pedidoId = payload.get("pedidoId").toString();
+
+        // 1) Buscar o instanciar
+        Pedido pedido = pedidoRepository.findById(pedidoId)
+                .orElseGet(() -> {
+                    Pedido p = new Pedido();
+                    p.setPedidoId(pedidoId);
+                    return p;
+                });
+
+        // 2) Mapear campos del payload
+        // Asumimos que el evento trae estos campos:
+        pedido.setEstado(
+                ar.com.deliverar.deliver.model.EstadoPedido.valueOf(
+                        payload.getOrDefault("estado", "ENTREGADO").toString()
+                )
+        );
+        pedido.setSubtotal(((Number)payload.get("subtotal")).doubleValue());
+        pedido.setMoneda(payload.get("moneda").toString());
+        pedido.setCreatedAt(Instant.parse(payload.get("createdAt").toString()));
+        pedido.setRepartidorId(payload.get("repartidorId").toString());
+
+        // 3) Asociar al Proveedor (tenant)
+        String tenantId = payload.get("tenantId").toString();
+
+        Proveedor tenant = proveedorRepository
+                .findByExternalId(tenantId)      // aquí busca en proveedores.external_id = tenantId
+                .orElseThrow(() -> new RuntimeException(
+                        "Tenant no encontrado (externalId=" + tenantId + ")"
+                ));
+        pedido.setTenant(tenant);
+        // 4) Guardar
+        pedidoRepository.save(pedido);
+
+        return pedidoId;
     }
 }

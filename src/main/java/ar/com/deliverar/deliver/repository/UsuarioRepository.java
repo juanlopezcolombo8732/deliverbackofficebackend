@@ -10,5 +10,7 @@ import java.util.Optional;
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     // Podés agregar métodos custom como:
 // Optional<Usuario> findByEmail(String email);
+    Optional<Usuario> findByExternalId(String externalId);
+
 
 }

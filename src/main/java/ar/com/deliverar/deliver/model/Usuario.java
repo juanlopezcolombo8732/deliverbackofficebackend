@@ -13,7 +13,7 @@ import java.util.List;
 public class Usuario {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private Double totalVentas = 0.0;     // Total de ventas realizadas
     private Double saldoActual = 0.0;
@@ -24,6 +24,10 @@ public class Usuario {
     private String direccion;
     private String ciudad;
     private String pais;
+
+
+    @Column(name = "external_id", unique = true)
+    private String externalId;
 
     private String rol;
     private String departamento;

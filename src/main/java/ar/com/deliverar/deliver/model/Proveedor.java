@@ -22,7 +22,8 @@ public class Proveedor {
     private String email;
     private String telefono;
     private String categoriaFiscal;
-
+    @Column(name = "external_id",  unique = true)
+    private String externalId;
 
     @JsonManagedReference
     @OneToMany(mappedBy = "tenant", cascade = CascadeType.ALL)
@@ -31,6 +32,8 @@ public class Proveedor {
     @JsonManagedReference
     @OneToMany(mappedBy = "proveedor", cascade = CascadeType.ALL)
     private List<Factura> facturas;
+
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)

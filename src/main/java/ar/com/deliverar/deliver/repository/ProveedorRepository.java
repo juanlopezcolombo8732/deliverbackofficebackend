@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface ProveedorRepository extends JpaRepository<Proveedor, Long> {
 
+        Optional<Proveedor> findByExternalId(String externalId);
 }
