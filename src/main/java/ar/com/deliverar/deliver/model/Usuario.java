@@ -33,8 +33,8 @@ public class Usuario {
     private String departamento;
 
     private LocalDate fechaContratacion;
-    private Double salarioBase=1000.0;
-    private Double porcentajeComision=0.2;
+    private Double salarioBase=700000.0;
+    private Double porcentajeComision=0.02;
 
     private String nombreContactoEmergencia;
     private String telefonoContactoEmergencia;

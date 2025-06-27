@@ -20,7 +20,7 @@ public class Pedido {
     private String repartidorId;
     @Enumerated(EnumType.STRING)
     private EstadoPedido estado;
-    private Double subtotal;
+    private Double subtotal=10000.0;
     private String moneda;
     private Instant createdAt;
 

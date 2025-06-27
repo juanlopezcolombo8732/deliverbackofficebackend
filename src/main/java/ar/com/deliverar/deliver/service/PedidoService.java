@@ -48,6 +48,7 @@ public class PedidoService {
 
     @Transactional
     public String upsertAndReturnId(Map<String,Object> payload) {
+        Instant cita = Instant.parse("2025-06-27T19:00:00Z")
         String pedidoId = payload.get("pedidoId").toString();
 
         // 1) Buscar o instanciar
@@ -65,9 +66,12 @@ public class PedidoService {
                         payload.getOrDefault("estado", "ENTREGADO").toString()
                 )
         );
-        pedido.setSubtotal(((Number)payload.get("subtotal")).doubleValue());
-        pedido.setMoneda(payload.get("moneda").toString());
-        pedido.setCreatedAt(Instant.parse(payload.get("createdAt").toString()));
+        pedido.setMoneda("ARS");
+        pedido.setCreatedAt(cita);
+
+
+
+
         pedido.setRepartidorId(payload.get("repartidorId").toString());
 
         // 3) Asociar al Proveedor (tenant)
@@ -83,5 +87,9 @@ public class PedidoService {
         pedidoRepository.save(pedido);
 
         return pedidoId;
+    }
+
+    public Pedido guardar(Pedido pedido) {
+        return pedidoRepository.save(pedido);
     }
 }

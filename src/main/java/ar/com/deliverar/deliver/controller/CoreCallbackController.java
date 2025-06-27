@@ -1,13 +1,11 @@
 package ar.com.deliverar.deliver.controller;
 
+import ar.com.deliverar.deliver.model.Comercio;
 import ar.com.deliverar.deliver.model.Pedido;
 import ar.com.deliverar.deliver.model.Proveedor;
 import ar.com.deliverar.deliver.model.Usuario;
 import ar.com.deliverar.deliver.repository.UsuarioRepository;
-import ar.com.deliverar.deliver.service.ComisionService;
-import ar.com.deliverar.deliver.service.PedidoService;
-import ar.com.deliverar.deliver.service.ProveedorService;
-import ar.com.deliverar.deliver.service.UsuarioService;
+import ar.com.deliverar.deliver.service.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,17 +23,20 @@ public class CoreCallbackController {
     private final ProveedorService proveedorService;
     private final ComisionService comisionService;
     private final PedidoService pedidoService;
+    private final ComercioService comercioService;
 
 
     private final UsuarioService usuarioService;
 
     @Autowired
-    public CoreCallbackController(ProveedorService proveedorService,
+    public CoreCallbackController(ProveedorService proveedorService,ComercioService comercioService,
                                   ComisionService comisionService,PedidoService pedidoService,UsuarioRepository usuarioRepository, UsuarioService usuarioService, ObjectMapper mapper) {
         this.proveedorService = proveedorService;
         this.comisionService  = comisionService;
         this.usuarioService = usuarioService;
         this.pedidoService = pedidoService ;
+        this.comercioService = comercioService;
+
 
     }
 
@@ -60,7 +61,15 @@ public class CoreCallbackController {
             @RequestBody Map<String,Object> payload
     ) {
         switch(eventType) {
-            case "tenant.creadoTest":
+            case "pedido.creado":
+                handlePedidoCreado(payload);
+                break;
+            case "comercio.creado":
+                handleComercioCreado(payload);
+                break;
+
+            case "tenant.creado":
+                System.out.println("EEEENTROOOO");
                 proveedorService.upsertFromPayload(payload);
                 break;
 
@@ -68,6 +77,7 @@ public class CoreCallbackController {
                 String pedidoId = pedidoService.upsertAndReturnId(payload);
                 comisionService.procesarPedidoEntregado(pedidoId);
                 break;
+
 
             case "delivery.nuevoRepartidor":
                 // Directamente pasamos el Map que nos llega
@@ -108,5 +118,49 @@ public class CoreCallbackController {
         }
 
         usuarioService.guardar(u);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void handleComercioCreado(Map<String,Object> body) {
+        // support both direct payload and wrapped
+        Map<String,Object> evt = body;
+        if (body.containsKey("payload")) {
+            evt = (Map<String,Object>) body.get("payload");
+        }
+        Map<String,Object> comm;
+        if (evt.containsKey("comercio")) {
+            comm = (Map<String,Object>) evt.get("comercio");
+        } else {
+            comm = evt;
+        }
+
+        String comercioId = comm.get("comercio_id").toString();
+        String tenantId   = comm.get("tenant_id").toString();
+        String calle      = (String) comm.get("calle");
+        String numero     = comm.get("numero").toString();
+
+        comercioService.upsertFromEvent(comercioId, tenantId, calle, numero);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void handlePedidoCreado(Map<String,Object> body) {
+        // 1) Parseo los campos básicos
+        String pedidoId        = body.get("pedidoId").toString();
+        String comercioId      = body.get("comercio_id").toString();
+
+
+        // 2) Traigo el Comercio y a partir de él el Proveedor (tenant)
+        Comercio comm = comercioService.findById(comercioId);
+        Proveedor tenant = comm.getTenant();
+
+        // 3) Creo la entidad Pedido y la completo
+        Pedido p = new Pedido();
+        p.setPedidoId(pedidoId);
+        p.setTenant(tenant);
+
+        // si tenés más campos (productos, fecha, etc.) los parseás aquí…
+
+        // 4) Lo guardás con tu service/repo
+        pedidoService.guardar(p);
     }
 }

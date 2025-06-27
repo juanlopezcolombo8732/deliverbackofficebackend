@@ -35,7 +35,7 @@ public class ProveedorService {
 
     @Transactional
     public Proveedor upsertFromPayload(Map<String, Object> payload) {
-        String extId = payload.get("id").toString();
+        String extId = payload.get("tenant_id").toString();
 
         Proveedor entidad = proveedorRepository.findByExternalId(extId)
                 .orElseGet(() -> {
@@ -46,11 +46,10 @@ public class ProveedorService {
 
         // Actualizo campos
         entidad.setNombre((String) payload.get("nombre"));
-        entidad.setCuit((String) payload.get("cuit"));
-        entidad.setDireccion((String) payload.get("direccion"));
+        entidad.setCuit((String) payload.get("razon_social"));
+        entidad.setDireccion((String) payload.get("sitio_web"));
         entidad.setEmail((String) payload.get("email"));
         entidad.setTelefono((String) payload.get("telefono"));
-        entidad.setCategoriaFiscal((String) payload.get("categoriaFiscal"));
 
         return proveedorRepository.save(entidad);
     }

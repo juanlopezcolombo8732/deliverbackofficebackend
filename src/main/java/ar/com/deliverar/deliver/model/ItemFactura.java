@@ -15,7 +15,7 @@ public class ItemFactura {
     private String descripcion;
     private int cantidad;
     private double precioUnitario;
-    private double porcentajeIVA;
+    private double porcentajeIVA=0.21;
     private double subtotal;
     private double montoIVA;
     private double totalItem;
