@@ -1,7 +1,6 @@
 package ar.com.deliverar.deliver.service;
 
 import ar.com.deliverar.deliver.model.Pedido;
-import ar.com.deliverar.deliver.model.Proveedor;
 import ar.com.deliverar.deliver.repository.PedidoRepository;
 import ar.com.deliverar.deliver.repository.ProveedorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,12 +17,10 @@ import java.util.Optional;
 public class PedidoService {
 
     private final PedidoRepository pedidoRepository;
-    private final ProveedorRepository proveedorRepository;
 
     @Autowired
     public PedidoService(PedidoRepository pedidoRepository,ProveedorRepository proveedorRepository) {
         this.pedidoRepository = pedidoRepository;
-        this.proveedorRepository = proveedorRepository;
     }
 
     /** Crea o actualiza un pedido */
@@ -48,7 +45,7 @@ public class PedidoService {
 
     @Transactional
     public String upsertAndReturnId(Map<String,Object> payload) {
-        Instant cita = Instant.parse("2025-06-27T19:00:00Z")
+        Instant cita = Instant.parse("2025-06-27T19:00:00Z");
         String pedidoId = payload.get("pedidoId").toString();
 
         // 1) Buscar o instanciar
@@ -75,14 +72,9 @@ public class PedidoService {
         pedido.setRepartidorId(payload.get("repartidorId").toString());
 
         // 3) Asociar al Proveedor (tenant)
-        String tenantId = payload.get("tenantId").toString();
 
-        Proveedor tenant = proveedorRepository
-                .findByExternalId(tenantId)      // aquí busca en proveedores.external_id = tenantId
-                .orElseThrow(() -> new RuntimeException(
-                        "Tenant no encontrado (externalId=" + tenantId + ")"
-                ));
-        pedido.setTenant(tenant);
+
+
         // 4) Guardar
         pedidoRepository.save(pedido);
 

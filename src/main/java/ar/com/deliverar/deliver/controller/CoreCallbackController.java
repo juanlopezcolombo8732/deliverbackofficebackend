@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Instant;
 import java.util.Map;
@@ -24,18 +25,21 @@ public class CoreCallbackController {
     private final ComisionService comisionService;
     private final PedidoService pedidoService;
     private final ComercioService comercioService;
+    private final SueldoService sueldoService;
 
 
     private final UsuarioService usuarioService;
 
     @Autowired
-    public CoreCallbackController(ProveedorService proveedorService,ComercioService comercioService,
-                                  ComisionService comisionService,PedidoService pedidoService,UsuarioRepository usuarioRepository, UsuarioService usuarioService, ObjectMapper mapper) {
+    public CoreCallbackController(ProveedorService proveedorService,ComercioService comercioService,RestTemplate restTemplate,
+                                  ComisionService comisionService,PedidoService pedidoService,UsuarioRepository usuarioRepository, UsuarioService usuarioService, ObjectMapper mapper,SueldoService sueldoService) {
         this.proveedorService = proveedorService;
         this.comisionService  = comisionService;
         this.usuarioService = usuarioService;
         this.pedidoService = pedidoService ;
         this.comercioService = comercioService;
+        this.sueldoService = sueldoService;
+
 
 
     }
@@ -61,25 +65,39 @@ public class CoreCallbackController {
             @RequestBody Map<String,Object> payload
     ) {
         switch(eventType) {
+            case "fiat.payment.response":
+                System.out.println("ENTRO CONFIR PAGO CREADO");
+
+                sueldoService.procesarPaymentResponse(payload);                break;
+
             case "pedido.creado":
+                System.out.println("PEDIDO CREADO");
+
                 handlePedidoCreado(payload);
                 break;
             case "comercio.creado":
+                System.out.println("COMERCIO CREADO");
+
                 handleComercioCreado(payload);
                 break;
 
+
             case "tenant.creado":
-                System.out.println("EEEENTROOOO");
+                System.out.println("TENANT CREADO");
                 proveedorService.upsertFromPayload(payload);
                 break;
 
             case "pedido.entregado":
+                System.out.println("PEDIDO ENTREGADO");
+
                 String pedidoId = pedidoService.upsertAndReturnId(payload);
                 comisionService.procesarPedidoEntregado(pedidoId);
                 break;
 
 
             case "delivery.nuevoRepartidor":
+                System.out.println("DELIVERY CREADO");
+
                 // Directamente pasamos el Map que nos llega
                 handleNuevoRepartidor(payload);
                 break;
@@ -163,4 +181,6 @@ public class CoreCallbackController {
         // 4) Lo guardás con tu service/repo
         pedidoService.guardar(p);
     }
+
+
 }

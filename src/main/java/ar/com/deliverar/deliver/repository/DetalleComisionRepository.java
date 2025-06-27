@@ -17,4 +17,7 @@ public interface DetalleComisionRepository extends JpaRepository<DetalleComision
             Instant fechaInicio,
             Instant fechaFin
     );
+
+    List<DetalleComision> findByUsuarioId(Long usuarioId);
+
 }
